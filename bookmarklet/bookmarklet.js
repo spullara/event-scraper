@@ -159,30 +159,26 @@
   
   // Main execution
   async function main() {
-    // Extract content - try structured data first
-    let structuredData = extractStructuredData();
-    let plainText = extractPlainText();
+    // Create modal and show loading
+    const modalContent = createModal();
+    showLoading(modalContent);
 
+    // Try structured data first
+    let structuredData = extractStructuredData();
     let content = '';
     let extractionMethod = '';
 
-    // Always include plain text as fallback, even if we have structured data
     if (structuredData && structuredData.trim().length > 0) {
       content = structuredData;
       extractionMethod = 'structured data';
-
-      // Also append plain text to give the AI more context
-      if (plainText && plainText.trim().length > 0) {
-        content += '\n\n--- Plain Text Fallback ---\n\n' + plainText;
-        extractionMethod = 'structured data + plain text';
-      }
-    } else if (plainText && plainText.trim().length > 0) {
-      content = plainText;
-      extractionMethod = 'plain text only';
+    } else {
+      content = extractPlainText();
+      extractionMethod = 'plain text';
     }
 
     if (!content || content.trim().length === 0) {
       alert('No content found on this page.');
+      document.getElementById('event-scraper-modal').remove();
       return;
     }
 
@@ -191,10 +187,6 @@
     console.log('Event Scraper - Content length:', content.length, 'characters');
     console.log('Event Scraper - Content preview:', content.substring(0, 500));
     console.log('Event Scraper - Full content:', content);
-
-    // Create modal and show loading
-    const modalContent = createModal();
-    showLoading(modalContent);
 
     try {
       // Call API with timeout
@@ -220,9 +212,70 @@
 
       // Log response for debugging
       console.log('Event Scraper - API response length:', html.length, 'characters');
-      if (html.includes('No Event Found') || html.includes('event-scraper-error')) {
+
+      // Check if no event was found
+      const noEventFound = html.includes('No Event Found') || html.includes('event-scraper-error');
+
+      if (noEventFound) {
         console.log('Event Scraper - No event found in response');
         console.log('Event Scraper - Response HTML:', html);
+
+        // If we used structured data and got no results, try plain text
+        if (extractionMethod === 'structured data') {
+          console.log('Event Scraper - Retrying with plain text extraction...');
+
+          const plainText = extractPlainText();
+          if (plainText && plainText.trim().length > 0) {
+            console.log('Event Scraper - Extraction method: plain text (retry)');
+            console.log('Event Scraper - Content length:', plainText.length, 'characters');
+            console.log('Event Scraper - Content preview:', plainText.substring(0, 500));
+            console.log('Event Scraper - Full content:', plainText);
+
+            // Show loading again
+            showLoading(modalContent);
+
+            // Try API again with plain text
+            const controller2 = new AbortController();
+            const timeoutId2 = setTimeout(() => controller2.abort(), 30000);
+
+            const response2 = await fetch(API_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ text: plainText }),
+              signal: controller2.signal,
+            });
+
+            clearTimeout(timeoutId2);
+
+            if (!response2.ok) {
+              throw new Error(`API request failed: ${response2.status}`);
+            }
+
+            const html2 = await response2.text();
+            console.log('Event Scraper - Retry API response length:', html2.length, 'characters');
+
+            if (html2.includes('No Event Found') || html2.includes('event-scraper-error')) {
+              console.log('Event Scraper - Still no event found after retry');
+            } else {
+              console.log('Event Scraper - Event(s) found successfully on retry!');
+            }
+
+            // Display retry result
+            modalContent.innerHTML = html2;
+
+            // Add close button functionality
+            const closeButtons2 = modalContent.querySelectorAll('[data-close-modal]');
+            closeButtons2.forEach(btn => {
+              btn.addEventListener('click', () => {
+                document.getElementById('event-scraper-modal').remove();
+              });
+            });
+
+            return; // Exit after retry
+          }
+        }
       } else {
         console.log('Event Scraper - Event(s) found successfully');
       }
