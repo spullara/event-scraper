@@ -19,10 +19,10 @@ Watch local startups pitch their ideas to investors.
 `;
 
 async function testAPI() {
-  console.log('Testing Event Scraper API with multiple events...\n');
-  
+  console.log('Testing GrabCal API with multiple events...\n');
+
   try {
-    const response = await fetch('http://localhost:3000/api/extract-event', {
+    const response = await fetch('https://grabcal.com/api/extract-event', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -42,10 +42,19 @@ async function testAPI() {
     // Check if response contains expected elements
     if (html.includes('Multiple Events Found')) {
       console.log('✅ Multiple events detected correctly');
-      
-      // Count how many event items are in the response
-      const eventCount = (html.match(/event-item/g) || []).length;
+
+      // Count how many event items are in the response by counting <h3> tags
+      const eventCount = (html.match(/<h3>/g) || []).length;
       console.log(`   Found ${eventCount} events in response`);
+
+      // Extract event titles
+      const titles = html.match(/<h3>([^<]+)<\/h3>/g);
+      if (titles) {
+        console.log('\n   Event titles:');
+        titles.forEach((title, i) => {
+          console.log(`   ${i+1}. ${title.replace(/<\/?h3>/g, '')}`);
+        });
+      }
     } else if (html.includes('Event Found')) {
       console.log('⚠️  Single event response (expected multiple)');
     } else if (html.includes('No Event Found')) {
