@@ -5,10 +5,11 @@ import { z } from 'zod';
 // Schema for event data
 const eventSchema = z.object({
   title: z.string(),
-  startDate: z.string().describe('ISO 8601 date-time string'),
-  endDate: z.string().optional().describe('ISO 8601 date-time string'),
+  startDate: z.string().describe('ISO 8601 date-time string with timezone if available'),
+  endDate: z.string().optional().describe('ISO 8601 date-time string with timezone if available'),
   location: z.string().optional(),
   description: z.string().optional(),
+  timezone: z.string().optional().describe('IANA timezone name (e.g., America/Los_Angeles, America/New_York) or timezone abbreviation (e.g., PST, EST)'),
 });
 
 const responseSchema = z.object({
@@ -32,11 +33,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { text } = req.body;
+    const { text, browserTimezone } = req.body;
 
     if (!text) {
       return res.status(400).send(generateErrorHTML('No text provided'));
     }
+
+    console.log('Browser timezone:', browserTimezone);
 
     // Use Gemini to extract event information
     const result = await generateObject({
@@ -50,8 +53,13 @@ If you find exactly one event, return status "success" with the event details.
 If you find multiple events (up to 5), return status "multiple" with an array of events.
 If no event is found, return status "error" with an appropriate message.
 
-For dates, use ISO 8601 format (YYYY-MM-DDTHH:mm:ss). If no time is specified, use 00:00:00.
-If no end date is specified, leave it empty.
+For dates:
+- Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss)
+- If a timezone is mentioned (e.g., PST, EST, PDT, America/Los_Angeles), include it in the timezone field as an IANA timezone name
+- If no timezone is mentioned in the text, use this browser timezone: ${browserTimezone || 'UTC'}
+- Do NOT convert times to UTC - keep them in the original timezone mentioned
+- If no time is specified, use 00:00:00
+- If no end date is specified, leave it empty
 
 Text to analyze:
 ${text}`,
@@ -85,7 +93,7 @@ function generateGoogleCalendarURL(event) {
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: event.title,
-    dates: formatDateForGoogle(event.startDate, event.endDate),
+    dates: formatDateForGoogle(event.startDate, event.endDate, event.timezone),
   });
 
   if (event.location) {
@@ -96,13 +104,27 @@ function generateGoogleCalendarURL(event) {
     params.append('details', event.description);
   }
 
+  if (event.timezone) {
+    params.append('ctz', event.timezone);
+  }
+
   return `${baseURL}?${params.toString()}`;
 }
 
-function formatDateForGoogle(startDate, endDate) {
+function formatDateForGoogle(startDate, endDate, timezone) {
   const formatDate = (dateStr) => {
+    // Parse the date string - it should be in local time, not UTC
     const date = new Date(dateStr);
-    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+    // Format as YYYYMMDDTHHmmss without timezone conversion
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+
+    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
   };
 
   const start = formatDate(startDate);
@@ -114,7 +136,16 @@ function formatDateForGoogle(startDate, endDate) {
 function generateICS(event) {
   const formatICSDate = (dateStr) => {
     const date = new Date(dateStr);
-    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+    // Format as YYYYMMDDTHHmmss without timezone conversion
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+
+    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
   };
 
   const start = formatICSDate(event.startDate);
@@ -122,12 +153,14 @@ function generateICS(event) {
 
   const ics = `BEGIN:VCALENDAR
 VERSION:2.0
+PRODID:-//Event Scraper//EN
 BEGIN:VEVENT
 DTSTART:${start}
 DTEND:${end}
 SUMMARY:${event.title}
 ${event.description ? `DESCRIPTION:${event.description.replace(/\n/g, '\\n')}` : ''}
 ${event.location ? `LOCATION:${event.location}` : ''}
+${event.timezone ? `TZID:${event.timezone}` : ''}
 END:VEVENT
 END:VCALENDAR`;
 

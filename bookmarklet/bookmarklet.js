@@ -198,7 +198,10 @@
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text: content }),
+        body: JSON.stringify({
+          text: content,
+          browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }),
         signal: controller.signal,
       });
 
@@ -243,7 +246,10 @@
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({ text: plainText }),
+              body: JSON.stringify({
+                text: plainText,
+                browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+              }),
               signal: controller2.signal,
             });
 
