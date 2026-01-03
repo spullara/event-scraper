@@ -1,8 +1,68 @@
 (function() {
   'use strict';
-  
+
   const API_URL = 'https://grabcal.com/api/extract-event';
-  
+  const HELPER_URL = 'https://grabcal.com/fetch-helper.html';
+
+  // Function to fetch via iframe to bypass CSP
+  function fetchViaIframe(data) {
+    return new Promise((resolve, reject) => {
+      // Create hidden iframe
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = HELPER_URL;
+
+      let timeoutId;
+      let isResolved = false;
+
+      // Set up message listener
+      const messageHandler = (event) => {
+        if (event.source !== iframe.contentWindow) return;
+
+        const { action, success, html, error } = event.data;
+
+        if (action === 'HELPER_READY') {
+          // Send fetch request to iframe
+          iframe.contentWindow.postMessage({
+            action: 'FETCH_EVENT',
+            data: data
+          }, '*');
+
+          // Set timeout
+          timeoutId = setTimeout(() => {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              reject(new Error('Request timeout'));
+            }
+          }, 30000);
+        } else if (action === 'FETCH_RESPONSE') {
+          if (isResolved) return;
+          isResolved = true;
+
+          cleanup();
+
+          if (success) {
+            resolve(html);
+          } else {
+            reject(new Error(error || 'Fetch failed'));
+          }
+        }
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('message', messageHandler);
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+      };
+
+      window.addEventListener('message', messageHandler);
+      document.body.appendChild(iframe);
+    });
+  }
+
   // Function to extract structured event data
   function extractStructuredData() {
     let eventData = [];
@@ -189,29 +249,11 @@
     console.log('GrabCal - Full content:', content);
 
     try {
-      // Call API with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: content,
-          browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        }),
-        signal: controller.signal,
+      // Use iframe to bypass CSP restrictions
+      const html = await fetchViaIframe({
+        text: content,
+        browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const html = await response.text();
 
       // Log response for debugging
       console.log('GrabCal - API response length:', html.length, 'characters');

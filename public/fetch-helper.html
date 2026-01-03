@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GrabCal Helper</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: white;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    // Listen for messages from parent
+    window.addEventListener('message', async (event) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin && !event.origin.match(/^https?:\/\//)) {
+        return;
+      }
+
+      const { action, data } = event.data;
+
+      if (action === 'FETCH_EVENT') {
+        try {
+          const response = await fetch('/api/extract-event', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+          });
+
+          const html = await response.text();
+
+          // Send response back to parent
+          window.parent.postMessage({
+            action: 'FETCH_RESPONSE',
+            success: true,
+            html: html
+          }, '*');
+
+        } catch (error) {
+          // Send error back to parent
+          window.parent.postMessage({
+            action: 'FETCH_RESPONSE',
+            success: false,
+            error: error.message
+          }, '*');
+        }
+      }
+    });
+
+    // Signal that we're ready
+    window.parent.postMessage({ action: 'HELPER_READY' }, '*');
+  </script>
+</body>
+</html>
+
