@@ -10,9 +10,10 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const rootDir = path.dirname(__dirname); // Go up one level from scripts/
 
-const bookmarkletPath = path.join(__dirname, 'bookmarklet', 'bookmarklet.js');
-const htmlPath = path.join(__dirname, 'public', 'index.html');
+const bookmarkletPath = path.join(rootDir, 'bookmarklet', 'bookmarklet.js');
+const htmlPath = path.join(rootDir, 'public', 'index.html');
 
 console.log('🔨 Rebuilding HTML with clean bookmarklet code...\n');
 

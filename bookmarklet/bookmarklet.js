@@ -61,12 +61,12 @@
   // Function to create and show modal
   function createModal() {
     // Remove existing modal if any
-    const existing = document.getElementById('event-scraper-modal');
+    const existing = document.getElementById('grabcal-modal');
     if (existing) existing.remove();
 
     // Create modal overlay
     const modal = document.createElement('div');
-    modal.id = 'event-scraper-modal';
+    modal.id = 'grabcal-modal';
     modal.style.cssText = `
       position: fixed;
       top: 0;
@@ -83,7 +83,7 @@
 
     // Create modal content container
     const modalContent = document.createElement('div');
-    modalContent.id = 'event-scraper-modal-content';
+    modalContent.id = 'grabcal-modal-content';
     modalContent.style.cssText = `
       background: white;
       border-radius: 12px;
@@ -117,12 +117,12 @@
           border-radius: 50%;
           width: 40px;
           height: 40px;
-          animation: event-scraper-spin 1s linear infinite;
+          animation: grabcal-spin 1s linear infinite;
           margin: 0 auto 20px;
         "></div>
         <p style="margin: 0; color: #666;">Extracting event information...</p>
         <style>
-          @keyframes event-scraper-spin {
+          @keyframes grabcal-spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
@@ -142,7 +142,7 @@
             💡 Check the browser console (F12) for debugging information
           </p>
         </div>
-        <button onclick="document.getElementById('event-scraper-modal').remove()" style="
+        <button onclick="document.getElementById('grabcal-modal').remove()" style="
           margin-top: 20px;
           width: 100%;
           padding: 12px;
@@ -178,15 +178,15 @@
 
     if (!content || content.trim().length === 0) {
       alert('No content found on this page.');
-      document.getElementById('event-scraper-modal').remove();
+      document.getElementById('grabcal-modal').remove();
       return;
     }
 
     // Log what we're sending for debugging
-    console.log('Event Scraper - Extraction method:', extractionMethod);
-    console.log('Event Scraper - Content length:', content.length, 'characters');
-    console.log('Event Scraper - Content preview:', content.substring(0, 500));
-    console.log('Event Scraper - Full content:', content);
+    console.log('GrabCal - Extraction method:', extractionMethod);
+    console.log('GrabCal - Content length:', content.length, 'characters');
+    console.log('GrabCal - Content preview:', content.substring(0, 500));
+    console.log('GrabCal - Full content:', content);
 
     try {
       // Call API with timeout
@@ -214,25 +214,25 @@
       const html = await response.text();
 
       // Log response for debugging
-      console.log('Event Scraper - API response length:', html.length, 'characters');
+      console.log('GrabCal - API response length:', html.length, 'characters');
 
       // Check if no event was found
-      const noEventFound = html.includes('No Event Found') || html.includes('event-scraper-error');
+      const noEventFound = html.includes('No Event Found') || html.includes('grabcal-error');
 
       if (noEventFound) {
-        console.log('Event Scraper - No event found in response');
-        console.log('Event Scraper - Response HTML:', html);
+        console.log('GrabCal - No event found in response');
+        console.log('GrabCal - Response HTML:', html);
 
         // If we used structured data and got no results, try plain text
         if (extractionMethod === 'structured data') {
-          console.log('Event Scraper - Retrying with plain text extraction...');
+          console.log('GrabCal - Retrying with plain text extraction...');
 
           const plainText = extractPlainText();
           if (plainText && plainText.trim().length > 0) {
-            console.log('Event Scraper - Extraction method: plain text (retry)');
-            console.log('Event Scraper - Content length:', plainText.length, 'characters');
-            console.log('Event Scraper - Content preview:', plainText.substring(0, 500));
-            console.log('Event Scraper - Full content:', plainText);
+            console.log('GrabCal - Extraction method: plain text (retry)');
+            console.log('GrabCal - Content length:', plainText.length, 'characters');
+            console.log('GrabCal - Content preview:', plainText.substring(0, 500));
+            console.log('GrabCal - Full content:', plainText);
 
             // Show loading again
             showLoading(modalContent);
@@ -260,12 +260,12 @@
             }
 
             const html2 = await response2.text();
-            console.log('Event Scraper - Retry API response length:', html2.length, 'characters');
+            console.log('GrabCal - Retry API response length:', html2.length, 'characters');
 
-            if (html2.includes('No Event Found') || html2.includes('event-scraper-error')) {
-              console.log('Event Scraper - Still no event found after retry');
+            if (html2.includes('No Event Found') || html2.includes('grabcal-error')) {
+              console.log('GrabCal - Still no event found after retry');
             } else {
-              console.log('Event Scraper - Event(s) found successfully on retry!');
+              console.log('GrabCal - Event(s) found successfully on retry!');
             }
 
             // Display retry result
@@ -275,7 +275,7 @@
             const closeButtons2 = modalContent.querySelectorAll('[data-close-modal]');
             closeButtons2.forEach(btn => {
               btn.addEventListener('click', () => {
-                document.getElementById('event-scraper-modal').remove();
+                document.getElementById('grabcal-modal').remove();
               });
             });
 
@@ -283,7 +283,7 @@
           }
         }
       } else {
-        console.log('Event Scraper - Event(s) found successfully');
+        console.log('GrabCal - Event(s) found successfully');
       }
 
       // Display result in modal
@@ -293,13 +293,13 @@
       const closeButtons = modalContent.querySelectorAll('[data-close-modal]');
       closeButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-          document.getElementById('event-scraper-modal').remove();
+          document.getElementById('grabcal-modal').remove();
         });
       });
 
     } catch (error) {
-      console.error('Event Scraper - Error:', error);
-      console.error('Event Scraper - Error details:', error.message);
+      console.error('GrabCal - Error:', error);
+      console.error('GrabCal - Error details:', error.message);
       showError(modalContent, error.message);
     }
   }

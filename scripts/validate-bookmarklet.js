@@ -10,8 +10,9 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const rootDir = path.dirname(__dirname); // Go up one level from scripts/
 
-const htmlPath = path.join(__dirname, 'public', 'index.html');
+const htmlPath = path.join(rootDir, 'public', 'index.html');
 
 console.log('🔍 Validating bookmarklet code in HTML...\n');
 
