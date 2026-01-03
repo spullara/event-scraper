@@ -137,7 +137,10 @@
       <div style="padding: 30px;">
         <div style="background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px;">
           <h2 style="margin: 0 0 10px 0; color: #c33; font-size: 20px;">Error</h2>
-          <p style="margin: 0; color: #666;">${message}</p>
+          <p style="margin: 0 0 10px 0; color: #666;">${message}</p>
+          <p style="margin: 10px 0 0 0; color: #999; font-size: 13px;">
+            💡 Check the browser console (F12) for debugging information
+          </p>
         </div>
         <button onclick="document.getElementById('event-scraper-modal').remove()" style="
           margin-top: 20px;
@@ -158,16 +161,24 @@
   async function main() {
     // Extract content
     let content = extractStructuredData();
+    let extractionMethod = 'structured data';
 
     // Fallback to plain text if no structured data found
     if (!content || content.trim().length === 0) {
       content = extractPlainText();
+      extractionMethod = 'plain text';
     }
 
     if (!content || content.trim().length === 0) {
       alert('No content found on this page.');
       return;
     }
+
+    // Log what we're sending for debugging
+    console.log('Event Scraper - Extraction method:', extractionMethod);
+    console.log('Event Scraper - Content length:', content.length, 'characters');
+    console.log('Event Scraper - Content preview:', content.substring(0, 500));
+    console.log('Event Scraper - Full content:', content);
 
     // Create modal and show loading
     const modalContent = createModal();
@@ -195,6 +206,15 @@
 
       const html = await response.text();
 
+      // Log response for debugging
+      console.log('Event Scraper - API response length:', html.length, 'characters');
+      if (html.includes('No Event Found') || html.includes('event-scraper-error')) {
+        console.log('Event Scraper - No event found in response');
+        console.log('Event Scraper - Response HTML:', html);
+      } else {
+        console.log('Event Scraper - Event(s) found successfully');
+      }
+
       // Display result in modal
       modalContent.innerHTML = html;
 
@@ -207,7 +227,8 @@
       });
 
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Event Scraper - Error:', error);
+      console.error('Event Scraper - Error details:', error.message);
       showError(modalContent, error.message);
     }
   }

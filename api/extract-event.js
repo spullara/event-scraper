@@ -225,7 +225,9 @@ function generateErrorHTML(message) {
   .event-scraper-close { background: none; border: none; font-size: 28px; color: #999; cursor: pointer; padding: 0; width: 32px; height: 32px; line-height: 1; }
   .event-scraper-close:hover { color: #333; }
   .event-scraper-error { background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; color: #c33; }
-  .event-scraper-error p { margin: 0; font-size: 14px; line-height: 1.5; }
+  .event-scraper-error p { margin: 0 0 10px 0; font-size: 14px; line-height: 1.5; }
+  .event-scraper-error p:last-child { margin: 10px 0 0 0; }
+  .event-scraper-hint { color: #999; font-size: 13px; }
 </style>
 <div class="event-scraper-container">
   <div class="event-scraper-header">
@@ -234,6 +236,7 @@ function generateErrorHTML(message) {
   </div>
   <div class="event-scraper-error">
     <p>${escapeHTML(message)}</p>
+    <p class="event-scraper-hint">💡 Check the browser console (F12) for debugging information</p>
   </div>
 </div>`;
 }
