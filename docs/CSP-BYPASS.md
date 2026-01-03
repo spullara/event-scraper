@@ -2,65 +2,72 @@
 
 ## Problem
 
-Some websites (like Steam, GitHub, etc.) implement strict Content Security Policy headers that block:
+Some websites (like Steam, GitHub, Shopify, etc.) implement strict Content Security Policy headers that block:
 - `fetch()` and `XMLHttpRequest` to external domains
-- Loading iframes from external domains
+- Loading iframes from external domains (`frame-src` directive)
 - Inline scripts from bookmarklets
 
 This prevents the bookmarklet from making API calls to extract event information.
 
-## Solution: Multi-Layer Fallback Strategy
+## Solution: Form Submission to Popup Window
 
-### Layer 1: Iframe Fetch (Preferred)
-**Attempt:** Create a hidden iframe pointing to `https://grabcal.com/fetch-helper.html`
-- The iframe loads from the same domain as the API
-- Uses `postMessage` to communicate between parent and iframe
-- Iframe makes the fetch request in its own context
-
-**Limitation:** Some CSP policies block iframe creation (`frame-src 'none'`)
-
-### Layer 2: Form Submission to Popup (Fallback)
-**When Layer 1 fails:** Automatically fall back to form submission
+**Strategy:** Use HTML form submission instead of fetch/XHR
 - Create a hidden HTML form with POST method
 - Set form target to a popup window
 - Submit form data (not JSON) to the API
-- Form submissions bypass CSP `connect-src` restrictions
+- Form submissions bypass CSP `connect-src` and `frame-src` restrictions
 
 **Why it works:**
 - Form submissions are considered navigation, not fetch/XHR
 - CSP `connect-src` doesn't apply to form submissions
+- CSP `frame-src` doesn't apply to popup windows
 - The popup window receives the API response as HTML
+- Works on **all** websites, regardless of CSP policy
 
 ## Implementation Details
 
 ### Bookmarklet Code
 
 ```javascript
-try {
-  // Try iframe fetch first
-  const html = await fetchViaIframe(data);
-  // Display in modal...
-} catch (error) {
-  // Fall back to form submission
-  if (error.message.includes('Failed to fetch') || error.message.includes('CSP')) {
-    // Create form
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = 'https://grabcal.com/api/extract-event';
-    form.target = 'GrabCal';
-    
-    // Add hidden inputs
-    const textInput = document.createElement('input');
-    textInput.type = 'hidden';
-    textInput.name = 'text';
-    textInput.value = content;
-    form.appendChild(textInput);
-    
-    // Open popup and submit
-    window.open('', 'GrabCal', 'width=600,height=700');
-    form.submit();
-  }
+// Create form
+const form = document.createElement('form');
+form.method = 'POST';
+form.action = 'https://grabcal.com/api/extract-event';
+form.target = 'GrabCal';
+form.style.display = 'none';
+
+// Add hidden inputs
+const textInput = document.createElement('input');
+textInput.type = 'hidden';
+textInput.name = 'text';
+textInput.value = content;
+form.appendChild(textInput);
+
+const tzInput = document.createElement('input');
+tzInput.type = 'hidden';
+tzInput.name = 'browserTimezone';
+tzInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+form.appendChild(tzInput);
+
+document.body.appendChild(form);
+
+// Open popup window
+const popup = window.open('', 'GrabCal', 'width=600,height=700,scrollbars=yes,resizable=yes');
+
+if (!popup) {
+  alert('Please allow popups for this site to use GrabCal.');
+  form.remove();
+  return;
 }
+
+// Show loading state in popup
+popup.document.write('...loading HTML...');
+
+// Submit form to popup
+form.submit();
+
+// Clean up
+setTimeout(() => form.remove(), 1000);
 ```
 
 ### API Changes
@@ -91,16 +98,12 @@ if (contentType.includes('application/json')) {
 
 ## User Experience
 
-### On Normal Sites
-- ✅ Modal overlay appears (preferred UX)
-- ✅ No popup blockers triggered
-- ✅ Clean, in-page experience
-
-### On Sites with Strict CSP
-- ✅ Popup window opens automatically
-- ⚠️ User may need to allow popups once
-- ✅ Same functionality, different window
+### On All Sites
+- ✅ Popup window opens with event information
+- ⚠️ User may need to allow popups once (browser will remember)
+- ✅ Works on **all** websites, regardless of CSP
 - ✅ Clear error message if popups blocked
+- ✅ Same functionality as a modal, just in a separate window
 
 ## Testing
 
@@ -108,21 +111,18 @@ if (contentType.includes('application/json')) {
 
 1. **`tests/test-csp-fallback.html`**
    - Strict CSP: `connect-src 'none'; frame-src 'none'`
-   - Tests automatic popup fallback
+   - Tests form submission with popup
    - Includes structured event data
 
 2. **`tests/test-form-submit.html`**
    - Tests form submission directly
    - Verifies API handles form-encoded data
 
-3. **`tests/test-iframe-fetch.html`**
-   - Tests iframe approach
-   - Compares direct fetch vs iframe fetch
-
 ### Manual Testing
 
-Test on real sites with strict CSP:
-- ✅ Steam Community
+Tested successfully on real sites with strict CSP:
+- ✅ Steam Community (very strict CSP)
+- ✅ Shopify stores (blocks iframes)
 - ✅ GitHub
 - ✅ Twitter/X
 - ✅ Facebook
@@ -157,16 +157,23 @@ Test on real sites with strict CSP:
 - **Pro**: No external requests
 - **Con**: Can't make API calls, limited functionality
 
-### ✅ Form Submission (Chosen)
-- **Pro**: Works everywhere, no installation, respects security
-- **Con**: Requires popup window on strict CSP sites
+### ❌ Iframe with postMessage
+- **Pro**: Could work on some sites
+- **Con**: Blocked by `frame-src` CSP directive on many sites (Steam, Shopify, etc.)
+
+### ❌ In-page Modal with fetch()
+- **Pro**: Best UX, no popup needed
+- **Con**: Blocked by `connect-src` CSP directive on many sites
+
+### ✅ Form Submission to Popup (Chosen)
+- **Pro**: Works on **all** sites, no installation, respects security, bypasses both `connect-src` and `frame-src`
+- **Con**: Requires popup window (but browsers remember popup permission)
 
 ## Future Improvements
 
-1. **Detect CSP Early**: Check CSP headers before attempting fetch
-2. **Better UX**: Show message explaining popup before opening
-3. **Remember Preference**: Store user's popup permission in localStorage
-4. **Progressive Enhancement**: Try multiple strategies in parallel
+1. **Better UX**: Show message explaining popup before opening (first time only)
+2. **Remember Preference**: Store user's popup permission in localStorage to avoid showing message again
+3. **Retry Logic**: If no event found with structured data, automatically retry with plain text in the same popup
 
 ## References
 

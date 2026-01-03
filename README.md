@@ -11,9 +11,9 @@ A bookmarklet and API service that extracts event information from web pages and
 - 🌍 **Timezone Aware**: Preserves event timezones from the page or uses browser timezone
 - 📱 **Multiple Calendar Formats**: Generates both Google Calendar URLs and ICS files
 - 🎯 **Multiple Events Support**: Handles pages with multiple events
-- ⚡ **Fast & Simple**: One-click extraction with clean, in-page modal UI
+- ⚡ **Fast & Simple**: One-click extraction with popup window UI
 - 🔄 **Smart Retry**: Tries structured data first, falls back to plain text if no events found
-- 🛡️ **CSP Bypass**: Automatically falls back to popup window on sites with strict Content Security Policy
+- 🛡️ **CSP Bypass**: Uses form submission to work on **all** sites, even those with strict Content Security Policy
 
 ## How It Works
 
@@ -28,12 +28,12 @@ A bookmarklet and API service that extracts event information from web pages and
    - Preserves timezone information instead of converting to UTC
    - Returns HTML with calendar links
 
-3. **Modal** displays results:
-   - Shows event details in an in-page overlay
+3. **Popup Window** displays results:
+   - Opens in a new window with event details
    - Provides Google Calendar and ICS download links
    - Handles multiple events with selection UI
    - Includes debugging console logs
-   - Falls back to popup window on sites with strict CSP (uses form submission to bypass restrictions)
+   - Uses form submission to bypass CSP restrictions on all sites
 
 ## Setup
 
