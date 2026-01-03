@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Test CSP Fallback - GrabCal</title>
+  <!-- Strict CSP that blocks all external connections -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; connect-src 'none'; frame-src 'none';">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .event-card {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    .event-info {
+      margin: 15px 0;
+      padding: 10px;
+      background: #f9f9f9;
+      border-left: 4px solid #4285f4;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    code {
+      background: #e9ecef;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="warning">
+    <strong>⚠️ CSP Test Page</strong><br>
+    This page has a strict Content Security Policy that blocks:
+    <ul>
+      <li><code>connect-src 'none'</code> - Blocks all fetch/XHR requests</li>
+      <li><code>frame-src 'none'</code> - Blocks all iframes</li>
+    </ul>
+    When you click the GrabCal bookmarklet, it should automatically fall back to a popup window.
+  </div>
+
+  <div class="event-card">
+    <h1>🎉 Tech Conference 2026</h1>
+    
+    <div class="event-info">
+      <strong>📅 Date:</strong> March 15, 2026<br>
+      <strong>🕐 Time:</strong> 9:00 AM - 5:00 PM PST<br>
+      <strong>📍 Location:</strong> San Francisco Convention Center<br>
+      <strong>💰 Price:</strong> $299
+    </div>
+    
+    <p>
+      Join us for the biggest tech conference of the year! Learn about the latest in AI, 
+      cloud computing, and web development from industry experts.
+    </p>
+    
+    <h2>Schedule</h2>
+    <ul>
+      <li>9:00 AM - Registration & Breakfast</li>
+      <li>10:00 AM - Keynote: The Future of AI</li>
+      <li>12:00 PM - Lunch Break</li>
+      <li>1:00 PM - Breakout Sessions</li>
+      <li>4:00 PM - Networking Reception</li>
+    </ul>
+  </div>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "Tech Conference 2026",
+    "startDate": "2026-03-15T09:00:00-08:00",
+    "endDate": "2026-03-15T17:00:00-08:00",
+    "location": {
+      "@type": "Place",
+      "name": "San Francisco Convention Center",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "San Francisco",
+        "addressRegion": "CA"
+      }
+    },
+    "description": "Join us for the biggest tech conference of the year! Learn about the latest in AI, cloud computing, and web development from industry experts.",
+    "offers": {
+      "@type": "Offer",
+      "price": "299",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+
+  <div style="margin-top: 40px; padding: 20px; background: #e7f3ff; border-radius: 8px;">
+    <h3>📖 How to Test:</h3>
+    <ol>
+      <li>Drag the GrabCal bookmarklet to your bookmarks bar from <a href="https://grabcal.com" target="_blank">grabcal.com</a></li>
+      <li>Click the GrabCal bookmarklet while on this page</li>
+      <li>You should see a popup window open (not a modal)</li>
+      <li>The popup should successfully extract the event information</li>
+    </ol>
+    <p><strong>Expected behavior:</strong> Since this page blocks fetch and iframes, GrabCal will automatically fall back to opening a popup window.</p>
+  </div>
+</body>
+</html>
+
