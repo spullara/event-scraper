@@ -113,10 +113,17 @@ function generateGoogleCalendarURL(event) {
 
 function formatDateForGoogle(startDate, endDate, timezone) {
   const formatDate = (dateStr) => {
-    // Parse the date string - it should be in local time, not UTC
-    const date = new Date(dateStr);
+    // Extract date/time components directly from ISO string to preserve local time
+    // Format: YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss±HH:mm
+    const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
 
-    // Format as YYYYMMDDTHHmmss without timezone conversion
+    if (match) {
+      const [, year, month, day, hours, minutes, seconds] = match;
+      return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+    }
+
+    // Fallback: parse as Date (may have timezone issues)
+    const date = new Date(dateStr);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -135,9 +142,17 @@ function formatDateForGoogle(startDate, endDate, timezone) {
 
 function generateICS(event) {
   const formatICSDate = (dateStr) => {
-    const date = new Date(dateStr);
+    // Extract date/time components directly from ISO string to preserve local time
+    // Format: YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss±HH:mm
+    const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
 
-    // Format as YYYYMMDDTHHmmss without timezone conversion
+    if (match) {
+      const [, year, month, day, hours, minutes, seconds] = match;
+      return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+    }
+
+    // Fallback: parse as Date (may have timezone issues)
+    const date = new Date(dateStr);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
