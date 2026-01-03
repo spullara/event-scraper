@@ -300,6 +300,30 @@ function escapeHTML(str) {
 }
 
 function formatDisplayDate(dateStr) {
+  // Extract date/time components directly from ISO string to preserve local time
+  // Format: YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss±HH:mm
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+
+  if (match) {
+    const [, year, month, day, hours, minutes] = match;
+
+    // Create a date object in UTC with these components, then format it
+    // This prevents timezone conversion
+    const date = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+
+    // Format using UTC to prevent timezone shifts
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC'
+    });
+  }
+
+  // Fallback: use standard Date parsing (may have timezone issues)
   const date = new Date(dateStr);
   return date.toLocaleString('en-US', {
     weekday: 'short',
