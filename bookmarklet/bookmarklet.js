@@ -343,19 +343,44 @@
       console.error('GrabCal - Error:', error);
       console.error('GrabCal - Error details:', error.message);
 
-      // If fetch failed (likely due to CSP), fall back to popup window
+      // If fetch failed (likely due to CSP), fall back to form submission
       if (error.message.includes('Failed to fetch') || error.message.includes('CSP') || error.message.includes('timeout')) {
-        console.log('GrabCal - Falling back to popup window due to CSP or network error');
+        console.log('GrabCal - Falling back to form submission due to CSP or network error');
 
         // Remove modal
         const modal = document.getElementById('grabcal-modal');
         if (modal) modal.remove();
 
-        // Open popup with the API request
+        // Create a form to POST data to the API
+        // Form submissions bypass CSP connect-src restrictions
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = API_URL;
+        form.target = 'GrabCal';
+        form.style.display = 'none';
+
+        // Add text data
+        const textInput = document.createElement('input');
+        textInput.type = 'hidden';
+        textInput.name = 'text';
+        textInput.value = content;
+        form.appendChild(textInput);
+
+        // Add timezone data
+        const tzInput = document.createElement('input');
+        tzInput.type = 'hidden';
+        tzInput.name = 'browserTimezone';
+        tzInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        form.appendChild(tzInput);
+
+        document.body.appendChild(form);
+
+        // Open popup window
         const popup = window.open('', 'GrabCal', 'width=600,height=700,scrollbars=yes,resizable=yes');
 
         if (!popup) {
           alert('GrabCal: Please allow popups for this site. The page has security restrictions that prevent the modal from working.');
+          form.remove();
           return;
         }
 
@@ -400,26 +425,11 @@
           </html>
         `);
 
-        // Make the fetch request from the popup context
-        const popupScript = popup.document.createElement('script');
-        popupScript.textContent = `
-          fetch('${API_URL}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(${JSON.stringify({
-              text: content,
-              browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-            })})
-          })
-          .then(response => response.text())
-          .then(html => {
-            document.body.innerHTML = html;
-          })
-          .catch(error => {
-            document.body.innerHTML = '<div style="padding: 20px;"><h2>Error</h2><p>' + error.message + '</p></div>';
-          });
-        `;
-        popup.document.body.appendChild(popupScript);
+        // Submit the form to the popup
+        form.submit();
+
+        // Clean up the form
+        setTimeout(() => form.remove(), 1000);
       } else {
         showError(modalContent, error.message);
       }
