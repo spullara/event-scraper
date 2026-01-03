@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Scraper Bookmarklet</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 {
+      color: #4285f4;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+    .bookmarklet-container {
+      background: #f5f5f5;
+      border: 2px dashed #4285f4;
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+      margin: 30px 0;
+    }
+    .bookmarklet-link {
+      display: inline-block;
+      background: #4285f4;
+      color: white;
+      padding: 15px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 16px;
+      cursor: move;
+    }
+    .bookmarklet-link:hover {
+      background: #3367d6;
+    }
+    .instructions {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .instructions h2 {
+      margin-top: 0;
+      color: #333;
+    }
+    .instructions ol {
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin: 10px 0;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 30px 0;
+    }
+    .feature {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #34a853;
+    }
+    .feature h3 {
+      margin-top: 0;
+      color: #34a853;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>📅 Event Scraper</h1>
+  <p class="subtitle">Extract events from any webpage and add them to your calendar</p>
+
+  <div class="bookmarklet-container">
+    <p><strong>Drag this button to your bookmarks bar:</strong></p>
+    <a href="javascript:(function(){const API_URL='http://localhost:3000/api/extract-event';function extractStructuredData(){let eventData=[];const jsonLdScripts=document.querySelectorAll('script[type=\"application/ld+json\"]');jsonLdScripts.forEach(script=>{try{const data=JSON.parse(script.textContent);const events=Array.isArray(data)?data:[data];events.forEach(item=>{if(item['@type']==='Event'||(Array.isArray(item['@type'])&&item['@type'].includes('Event'))){eventData.push(JSON.stringify(item))}})}catch(e){console.error('Error parsing JSON-LD:',e)}});const microdataEvents=document.querySelectorAll('[itemtype*=\"schema.org/Event\"]');microdataEvents.forEach(elem=>{eventData.push(elem.textContent)});const ogTags={};document.querySelectorAll('meta[property^=\"og:\"]').forEach(meta=>{ogTags[meta.getAttribute('property')]=meta.getAttribute('content')});if(Object.keys(ogTags).length>0){eventData.push(JSON.stringify(ogTags))}const hCalendarEvents=document.querySelectorAll('.vevent, .hcalendar');hCalendarEvents.forEach(elem=>{eventData.push(elem.textContent)});return eventData.join('\\n\\n')}function extractPlainText(){const clone=document.body.cloneNode(true);clone.querySelectorAll('script, style, nav, header, footer, iframe, noscript').forEach(el=>el.remove());return clone.textContent.trim().replace(/\\s+/g,' ').substring(0,10000)}function showLoadingPopup(){const popup=window.open('','EventScraperPopup','width=550,height=600,scrollbars=yes');if(!popup){alert('Please allow popups for this site to use the Event Scraper bookmarklet.');return null}popup.document.write('<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Arial,sans-serif;padding:20px;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}.loading{text-align:center}.spinner{border:4px solid #f3f3f3;border-top:4px solid #4285f4;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style></head><body><div class=\"loading\"><div class=\"spinner\"></div><p>Extracting event information...</p></div></body></html>');return popup}async function main(){let content=extractStructuredData();if(!content||content.trim().length===0){content=extractPlainText()}if(!content||content.trim().length===0){alert('No content found on this page.');return}const popup=showLoadingPopup();if(!popup)return;try{const controller=new AbortController();const timeoutId=setTimeout(()=>controller.abort(),30000);const response=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:content}),signal:controller.signal});clearTimeout(timeoutId);if(!response.ok){throw new Error(`API request failed: ${response.status}`)}const html=await response.text();popup.document.open();popup.document.write(html);popup.document.close()}catch(error){console.error('Error:',error);popup.document.open();popup.document.write(`<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Arial,sans-serif;padding:20px}.error{background:#fee;border:1px solid #fcc;padding:15px;border-radius:8px;color:#c33}</style></head><body><div class=\"error\"><h2>Error</h2><p>${error.message}</p></div></body></html>`);popup.document.close()}}main()})();" class="bookmarklet-link">📅 Event Scraper</a>
+    <p style="margin-top: 15px; color: #666; font-size: 14px;">
+      Or right-click and "Add to Bookmarks"
+    </p>
+  </div>
+
+  <div class="instructions">
+    <h2>How to Use</h2>
+    <ol>
+      <li>Drag the button above to your browser's bookmarks bar</li>
+      <li>Navigate to any webpage with event information</li>
+      <li>Click the bookmarklet in your bookmarks bar</li>
+      <li>A popup will appear with extracted event(s)</li>
+      <li>Click the link to add the event to Google Calendar or download as ICS file</li>
+    </ol>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <h3>🔍 Smart Detection</h3>
+      <p>Automatically detects structured event data (Schema.org, Open Graph, hCalendar) or falls back to AI-powered text extraction.</p>
+    </div>
+    <div class="feature">
+      <h3>📱 Multiple Formats</h3>
+      <p>Get both Google Calendar links and downloadable ICS files for compatibility with any calendar app.</p>
+    </div>
+    <div class="feature">
+      <h3>🎯 Multiple Events</h3>
+      <p>If a page contains multiple events, you'll see them all listed (up to 5) and can choose which to add.</p>
+    </div>
+  </div>
+
+  <div class="instructions">
+    <h2>Supported Event Formats</h2>
+    <ul>
+      <li><strong>Schema.org JSON-LD:</strong> Structured event data in JSON format</li>
+      <li><strong>Schema.org Microdata:</strong> HTML with event markup</li>
+      <li><strong>Open Graph:</strong> Facebook/social media event tags</li>
+      <li><strong>hCalendar:</strong> Microformat event data</li>
+      <li><strong>Plain Text:</strong> AI-powered extraction from any text content</li>
+    </ul>
+  </div>
+
+  <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666;">
+    <p>Event Scraper - Powered by Gemini AI</p>
+  </footer>
+</body>
+</html>
+
