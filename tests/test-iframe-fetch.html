@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Test Iframe Fetch</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; connect-src 'none';">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Iframe Fetch with CSP</h1>
+  <p>This page has a strict CSP that blocks fetch to external domains.</p>
+  <p><strong>CSP:</strong> <code>connect-src 'none'</code></p>
+  
+  <button onclick="testDirectFetch()">Test Direct Fetch (Should Fail)</button>
+  <button onclick="testIframeFetch()">Test Iframe Fetch (Should Work)</button>
+  
+  <div id="result"></div>
+
+  <script>
+    function testDirectFetch() {
+      const result = document.getElementById('result');
+      result.innerHTML = '<p>Testing direct fetch...</p>';
+      
+      fetch('https://grabcal.com/api/extract-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: 'Test event on January 10, 2026 at 6:00 PM',
+          browserTimezone: 'America/Los_Angeles'
+        })
+      })
+      .then(r => r.text())
+      .then(html => {
+        result.innerHTML = '<p style="color: green;">✅ Direct fetch succeeded (unexpected!)</p>';
+      })
+      .catch(error => {
+        result.innerHTML = '<p style="color: red;">❌ Direct fetch failed (expected): ' + error.message + '</p>';
+      });
+    }
+
+    function testIframeFetch() {
+      const result = document.getElementById('result');
+      result.innerHTML = '<p>Testing iframe fetch...</p>';
+      
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = 'https://grabcal.com/fetch-helper.html';
+      
+      let timeoutId;
+      
+      const messageHandler = (event) => {
+        if (event.source !== iframe.contentWindow) return;
+        
+        const { action, success, html, error } = event.data;
+        
+        if (action === 'HELPER_READY') {
+          result.innerHTML = '<p>Helper ready, sending request...</p>';
+          
+          iframe.contentWindow.postMessage({
+            action: 'FETCH_EVENT',
+            data: {
+              text: 'Test event on January 10, 2026 at 6:00 PM',
+              browserTimezone: 'America/Los_Angeles'
+            }
+          }, '*');
+          
+          timeoutId = setTimeout(() => {
+            result.innerHTML = '<p style="color: orange;">⚠️ Request timeout</p>';
+            cleanup();
+          }, 10000);
+        } else if (action === 'FETCH_RESPONSE') {
+          clearTimeout(timeoutId);
+          
+          if (success) {
+            result.innerHTML = '<p style="color: green;">✅ Iframe fetch succeeded!</p><p>Response length: ' + html.length + ' characters</p>';
+          } else {
+            result.innerHTML = '<p style="color: red;">❌ Iframe fetch failed: ' + error + '</p>';
+          }
+          
+          cleanup();
+        }
+      };
+      
+      const cleanup = () => {
+        window.removeEventListener('message', messageHandler);
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+      };
+      
+      window.addEventListener('message', messageHandler);
+      document.body.appendChild(iframe);
+    }
+  </script>
+</body>
+</html>
+

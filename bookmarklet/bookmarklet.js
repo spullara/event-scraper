@@ -342,7 +342,87 @@
     } catch (error) {
       console.error('GrabCal - Error:', error);
       console.error('GrabCal - Error details:', error.message);
-      showError(modalContent, error.message);
+
+      // If fetch failed (likely due to CSP), fall back to popup window
+      if (error.message.includes('Failed to fetch') || error.message.includes('CSP') || error.message.includes('timeout')) {
+        console.log('GrabCal - Falling back to popup window due to CSP or network error');
+
+        // Remove modal
+        const modal = document.getElementById('grabcal-modal');
+        if (modal) modal.remove();
+
+        // Open popup with the API request
+        const popup = window.open('', 'GrabCal', 'width=600,height=700,scrollbars=yes,resizable=yes');
+
+        if (!popup) {
+          alert('GrabCal: Please allow popups for this site. The page has security restrictions that prevent the modal from working.');
+          return;
+        }
+
+        // Show loading state in popup
+        popup.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>GrabCal - Loading...</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: #f5f5f5;
+              }
+              .loading {
+                text-align: center;
+                padding: 50px 20px;
+              }
+              .spinner {
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #4285f4;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 20px;
+              }
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="loading">
+              <div class="spinner"></div>
+              <p>Extracting event information...</p>
+            </div>
+          </body>
+          </html>
+        `);
+
+        // Make the fetch request from the popup context
+        const popupScript = popup.document.createElement('script');
+        popupScript.textContent = `
+          fetch('${API_URL}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(${JSON.stringify({
+              text: content,
+              browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            })})
+          })
+          .then(response => response.text())
+          .then(html => {
+            document.body.innerHTML = html;
+          })
+          .catch(error => {
+            document.body.innerHTML = '<div style="padding: 20px;"><h2>Error</h2><p>' + error.message + '</p></div>';
+          });
+        `;
+        popup.document.body.appendChild(popupScript);
+      } else {
+        showError(modalContent, error.message);
+      }
     }
   }
 
