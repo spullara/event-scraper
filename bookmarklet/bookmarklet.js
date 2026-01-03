@@ -2,66 +2,6 @@
   'use strict';
 
   const API_URL = 'https://grabcal.com/api/extract-event';
-  const HELPER_URL = 'https://grabcal.com/fetch-helper.html';
-
-  // Function to fetch via iframe to bypass CSP
-  function fetchViaIframe(data) {
-    return new Promise((resolve, reject) => {
-      // Create hidden iframe
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = HELPER_URL;
-
-      let timeoutId;
-      let isResolved = false;
-
-      // Set up message listener
-      const messageHandler = (event) => {
-        if (event.source !== iframe.contentWindow) return;
-
-        const { action, success, html, error } = event.data;
-
-        if (action === 'HELPER_READY') {
-          // Send fetch request to iframe
-          iframe.contentWindow.postMessage({
-            action: 'FETCH_EVENT',
-            data: data
-          }, '*');
-
-          // Set timeout
-          timeoutId = setTimeout(() => {
-            if (!isResolved) {
-              isResolved = true;
-              cleanup();
-              reject(new Error('Request timeout'));
-            }
-          }, 30000);
-        } else if (action === 'FETCH_RESPONSE') {
-          if (isResolved) return;
-          isResolved = true;
-
-          cleanup();
-
-          if (success) {
-            resolve(html);
-          } else {
-            reject(new Error(error || 'Fetch failed'));
-          }
-        }
-      };
-
-      const cleanup = () => {
-        clearTimeout(timeoutId);
-        window.removeEventListener('message', messageHandler);
-        if (iframe.parentNode) {
-          iframe.parentNode.removeChild(iframe);
-        }
-      };
-
-      window.addEventListener('message', messageHandler);
-      document.body.appendChild(iframe);
-    });
-  }
 
   // Function to extract structured event data
   function extractStructuredData() {
@@ -111,117 +51,16 @@
   function extractPlainText() {
     // Get the main content, avoiding scripts, styles, and navigation
     const clone = document.body.cloneNode(true);
-    
+
     // Remove unwanted elements
     clone.querySelectorAll('script, style, nav, header, footer, iframe, noscript').forEach(el => el.remove());
-    
+
     return clone.textContent.trim().replace(/\s+/g, ' ').substring(0, 10000); // Limit to 10k chars
   }
-  
-  // Function to create and show modal
-  function createModal() {
-    // Remove existing modal if any
-    const existing = document.getElementById('grabcal-modal');
-    if (existing) existing.remove();
 
-    // Create modal overlay
-    const modal = document.createElement('div');
-    modal.id = 'grabcal-modal';
-    modal.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2147483647;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-    `;
-
-    // Create modal content container
-    const modalContent = document.createElement('div');
-    modalContent.id = 'grabcal-modal-content';
-    modalContent.style.cssText = `
-      background: white;
-      border-radius: 12px;
-      max-width: 600px;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      position: relative;
-    `;
-
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
-
-    // Close on overlay click
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.remove();
-      }
-    });
-
-    return modalContent;
-  }
-
-  // Function to show loading state
-  function showLoading(container) {
-    container.innerHTML = `
-      <div style="padding: 40px; text-align: center;">
-        <div style="
-          border: 4px solid #f3f3f3;
-          border-top: 4px solid #4285f4;
-          border-radius: 50%;
-          width: 40px;
-          height: 40px;
-          animation: grabcal-spin 1s linear infinite;
-          margin: 0 auto 20px;
-        "></div>
-        <p style="margin: 0; color: #666;">Extracting event information...</p>
-        <style>
-          @keyframes grabcal-spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-      </div>
-    `;
-  }
-
-  // Function to show error
-  function showError(container, message) {
-    container.innerHTML = `
-      <div style="padding: 30px;">
-        <div style="background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px;">
-          <h2 style="margin: 0 0 10px 0; color: #c33; font-size: 20px;">Error</h2>
-          <p style="margin: 0 0 10px 0; color: #666;">${message}</p>
-          <p style="margin: 10px 0 0 0; color: #999; font-size: 13px;">
-            💡 Check the browser console (F12) for debugging information
-          </p>
-        </div>
-        <button onclick="document.getElementById('grabcal-modal').remove()" style="
-          margin-top: 20px;
-          width: 100%;
-          padding: 12px;
-          background: #4285f4;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          font-size: 16px;
-          cursor: pointer;
-        ">Close</button>
-      </div>
-    `;
-  }
-  
   // Main execution
   async function main() {
-    // Create modal and show loading
-    const modalContent = createModal();
-    showLoading(modalContent);
+    console.log('GrabCal - Starting event extraction...');
 
     // Try structured data first
     let structuredData = extractStructuredData();
@@ -237,8 +76,7 @@
     }
 
     if (!content || content.trim().length === 0) {
-      alert('No content found on this page.');
-      document.getElementById('grabcal-modal').remove();
+      alert('GrabCal: No content found on this page.');
       return;
     }
 
@@ -248,192 +86,85 @@
     console.log('GrabCal - Content preview:', content.substring(0, 500));
     console.log('GrabCal - Full content:', content);
 
-    try {
-      // Use iframe to bypass CSP restrictions
-      const html = await fetchViaIframe({
-        text: content,
-        browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-      });
+    // Use form submission to bypass CSP restrictions
+    // This works on all sites, including those with strict CSP
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = API_URL;
+    form.target = 'GrabCal';
+    form.style.display = 'none';
 
-      // Log response for debugging
-      console.log('GrabCal - API response length:', html.length, 'characters');
+    // Add text data
+    const textInput = document.createElement('input');
+    textInput.type = 'hidden';
+    textInput.name = 'text';
+    textInput.value = content;
+    form.appendChild(textInput);
 
-      // Check if no event was found
-      const noEventFound = html.includes('No Event Found') || html.includes('grabcal-error');
+    // Add timezone data
+    const tzInput = document.createElement('input');
+    tzInput.type = 'hidden';
+    tzInput.name = 'browserTimezone';
+    tzInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    form.appendChild(tzInput);
 
-      if (noEventFound) {
-        console.log('GrabCal - No event found in response');
-        console.log('GrabCal - Response HTML:', html);
+    document.body.appendChild(form);
 
-        // If we used structured data and got no results, try plain text
-        if (extractionMethod === 'structured data') {
-          console.log('GrabCal - Retrying with plain text extraction...');
+    // Open popup window
+    const popup = window.open('', 'GrabCal', 'width=600,height=700,scrollbars=yes,resizable=yes');
 
-          const plainText = extractPlainText();
-          if (plainText && plainText.trim().length > 0) {
-            console.log('GrabCal - Extraction method: plain text (retry)');
-            console.log('GrabCal - Content length:', plainText.length, 'characters');
-            console.log('GrabCal - Content preview:', plainText.substring(0, 500));
-            console.log('GrabCal - Full content:', plainText);
-
-            // Show loading again
-            showLoading(modalContent);
-
-            // Try API again with plain text
-            const controller2 = new AbortController();
-            const timeoutId2 = setTimeout(() => controller2.abort(), 30000);
-
-            const response2 = await fetch(API_URL, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                text: plainText,
-                browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-              }),
-              signal: controller2.signal,
-            });
-
-            clearTimeout(timeoutId2);
-
-            if (!response2.ok) {
-              throw new Error(`API request failed: ${response2.status}`);
-            }
-
-            const html2 = await response2.text();
-            console.log('GrabCal - Retry API response length:', html2.length, 'characters');
-
-            if (html2.includes('No Event Found') || html2.includes('grabcal-error')) {
-              console.log('GrabCal - Still no event found after retry');
-            } else {
-              console.log('GrabCal - Event(s) found successfully on retry!');
-            }
-
-            // Display retry result
-            modalContent.innerHTML = html2;
-
-            // Add close button functionality
-            const closeButtons2 = modalContent.querySelectorAll('[data-close-modal]');
-            closeButtons2.forEach(btn => {
-              btn.addEventListener('click', () => {
-                document.getElementById('grabcal-modal').remove();
-              });
-            });
-
-            return; // Exit after retry
-          }
-        }
-      } else {
-        console.log('GrabCal - Event(s) found successfully');
-      }
-
-      // Display result in modal
-      modalContent.innerHTML = html;
-
-      // Add close button functionality to any existing close buttons in the response
-      const closeButtons = modalContent.querySelectorAll('[data-close-modal]');
-      closeButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.getElementById('grabcal-modal').remove();
-        });
-      });
-
-    } catch (error) {
-      console.error('GrabCal - Error:', error);
-      console.error('GrabCal - Error details:', error.message);
-
-      // If fetch failed (likely due to CSP), fall back to form submission
-      if (error.message.includes('Failed to fetch') || error.message.includes('CSP') || error.message.includes('timeout')) {
-        console.log('GrabCal - Falling back to form submission due to CSP or network error');
-
-        // Remove modal
-        const modal = document.getElementById('grabcal-modal');
-        if (modal) modal.remove();
-
-        // Create a form to POST data to the API
-        // Form submissions bypass CSP connect-src restrictions
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = API_URL;
-        form.target = 'GrabCal';
-        form.style.display = 'none';
-
-        // Add text data
-        const textInput = document.createElement('input');
-        textInput.type = 'hidden';
-        textInput.name = 'text';
-        textInput.value = content;
-        form.appendChild(textInput);
-
-        // Add timezone data
-        const tzInput = document.createElement('input');
-        tzInput.type = 'hidden';
-        tzInput.name = 'browserTimezone';
-        tzInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        form.appendChild(tzInput);
-
-        document.body.appendChild(form);
-
-        // Open popup window
-        const popup = window.open('', 'GrabCal', 'width=600,height=700,scrollbars=yes,resizable=yes');
-
-        if (!popup) {
-          alert('GrabCal: Please allow popups for this site. The page has security restrictions that prevent the modal from working.');
-          form.remove();
-          return;
-        }
-
-        // Show loading state in popup
-        popup.document.write(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>GrabCal - Loading...</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-                margin: 0;
-                padding: 20px;
-                background: #f5f5f5;
-              }
-              .loading {
-                text-align: center;
-                padding: 50px 20px;
-              }
-              .spinner {
-                border: 4px solid #f3f3f3;
-                border-top: 4px solid #4285f4;
-                border-radius: 50%;
-                width: 50px;
-                height: 50px;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 20px;
-              }
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="loading">
-              <div class="spinner"></div>
-              <p>Extracting event information...</p>
-            </div>
-          </body>
-          </html>
-        `);
-
-        // Submit the form to the popup
-        form.submit();
-
-        // Clean up the form
-        setTimeout(() => form.remove(), 1000);
-      } else {
-        showError(modalContent, error.message);
-      }
+    if (!popup) {
+      alert('GrabCal: Please allow popups for this site to use GrabCal.');
+      form.remove();
+      return;
     }
+
+    // Show loading state in popup
+    popup.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>GrabCal - Loading...</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+          }
+          .loading {
+            text-align: center;
+            padding: 50px 20px;
+          }
+          .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4285f4;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Extracting event information...</p>
+        </div>
+      </body>
+      </html>
+    `);
+
+    // Submit the form to the popup
+    form.submit();
+
+    // Clean up the form
+    setTimeout(() => form.remove(), 1000);
   }
 
   main();
