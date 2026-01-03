@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Bookmarklet Locally</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #333;
+      margin-top: 0;
+    }
+    .test-button {
+      display: inline-block;
+      padding: 15px 30px;
+      background: #4285f4;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      margin: 20px 0;
+      cursor: pointer;
+      border: none;
+      font-size: 16px;
+    }
+    .test-button:hover {
+      background: #3367d6;
+    }
+    .event-info {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .status {
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+  </style>
+  
+  <!-- Schema.org Event markup for testing -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "Local Test Event",
+    "startDate": "2026-04-20T14:00:00-07:00",
+    "endDate": "2026-04-20T17:00:00-07:00",
+    "location": {
+      "@type": "Place",
+      "name": "Test Venue",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "123 Test Street",
+        "addressLocality": "San Francisco",
+        "addressRegion": "CA",
+        "postalCode": "94102"
+      }
+    },
+    "description": "This is a test event for validating the bookmarklet locally before deployment."
+  }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Bookmarklet Local Test Page</h1>
+    
+    <p>This page tests the bookmarklet code locally before deployment.</p>
+    
+    <div class="event-info">
+      <h2>📅 Test Event</h2>
+      <p><strong>Event:</strong> Local Test Event</p>
+      <p><strong>Date:</strong> April 20, 2026, 2:00 PM - 5:00 PM PST</p>
+      <p><strong>Location:</strong> Test Venue, 123 Test Street, San Francisco, CA 94102</p>
+      <p><strong>Description:</strong> This is a test event for validating the bookmarklet locally before deployment.</p>
+    </div>
+    
+    <h3>Test the Bookmarklet:</h3>
+    <button class="test-button" id="testBookmarklet">🧪 Run Bookmarklet Test</button>
+    
+    <div id="status"></div>
+    
+    <h3>Instructions:</h3>
+    <ol>
+      <li>Click the "Run Bookmarklet Test" button above</li>
+      <li>Check the browser console (F12) for any errors</li>
+      <li>Verify the modal appears correctly</li>
+      <li>Check that the event is extracted properly</li>
+      <li>Test the close button and click-outside-to-close</li>
+    </ol>
+    
+    <h3>Expected Behavior:</h3>
+    <ul>
+      <li>✅ Modal overlay appears on the page</li>
+      <li>✅ Loading spinner shows briefly</li>
+      <li>✅ Event details are displayed</li>
+      <li>✅ Google Calendar and ICS download links work</li>
+      <li>✅ Close button (×) closes the modal</li>
+      <li>✅ Clicking outside the modal closes it</li>
+      <li>✅ Console shows extraction logs</li>
+    </ul>
+  </div>
+  
+  <script id="bookmarklet-code">
+    // This will be loaded from the bookmarklet file
+  </script>
+  
+  <script>
+    // Load and test the bookmarklet
+    document.getElementById('testBookmarklet').addEventListener('click', async function() {
+      const statusDiv = document.getElementById('status');
+      statusDiv.innerHTML = '<div class="status">Loading bookmarklet code...</div>';
+      
+      try {
+        // Load the bookmarklet source
+        const response = await fetch('bookmarklet/bookmarklet.js');
+        const bookmarkletCode = await response.text();
+        
+        // Check for syntax errors by trying to parse it
+        try {
+          new Function(bookmarkletCode);
+          statusDiv.innerHTML = '<div class="status success">✅ Bookmarklet code is valid JavaScript!</div>';
+        } catch (syntaxError) {
+          statusDiv.innerHTML = `<div class="status error">❌ Syntax Error: ${syntaxError.message}<pre>${syntaxError.stack}</pre></div>`;
+          return;
+        }
+        
+        // Execute the bookmarklet
+        setTimeout(() => {
+          statusDiv.innerHTML += '<div class="status">Executing bookmarklet...</div>';
+          eval(bookmarkletCode);
+        }, 500);
+        
+      } catch (error) {
+        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+        console.error('Test error:', error);
+      }
+    });
+  </script>
+</body>
+</html>
+
