@@ -43,7 +43,7 @@ export default async function handler(req, res) {
 
     // Use Gemini to extract event information
     const result = await generateObject({
-      model: google('gemini-2.0-flash-exp', {
+      model: google('gemini-2.5-flash-lite', {
         structuredOutputs: true,
       }),
       schema: responseSchema,
