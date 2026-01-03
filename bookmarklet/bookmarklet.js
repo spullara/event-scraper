@@ -58,83 +58,126 @@
     return clone.textContent.trim().replace(/\s+/g, ' ').substring(0, 10000); // Limit to 10k chars
   }
   
-  // Function to show loading popup
-  function showLoadingPopup() {
-    const popup = window.open('', 'EventScraperPopup', 'width=550,height=600,scrollbars=yes');
-    if (!popup) {
-      alert('Please allow popups for this site to use the Event Scraper bookmarklet.');
-      return null;
-    }
-    
-    popup.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
+  // Function to create and show modal
+  function createModal() {
+    // Remove existing modal if any
+    const existing = document.getElementById('event-scraper-modal');
+    if (existing) existing.remove();
+
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.id = 'event-scraper-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2147483647;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    `;
+
+    // Create modal content container
+    const modalContent = document.createElement('div');
+    modalContent.id = 'event-scraper-modal-content';
+    modalContent.style.cssText = `
+      background: white;
+      border-radius: 12px;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      position: relative;
+    `;
+
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    return modalContent;
+  }
+
+  // Function to show loading state
+  function showLoading(container) {
+    container.innerHTML = `
+      <div style="padding: 40px; text-align: center;">
+        <div style="
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid #4285f4;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          animation: event-scraper-spin 1s linear infinite;
+          margin: 0 auto 20px;
+        "></div>
+        <p style="margin: 0; color: #666;">Extracting event information...</p>
         <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            padding: 20px;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-          }
-          .loading {
-            text-align: center;
-          }
-          .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4285f4;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-          }
-          @keyframes spin {
+          @keyframes event-scraper-spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
         </style>
-      </head>
-      <body>
-        <div class="loading">
-          <div class="spinner"></div>
-          <p>Extracting event information...</p>
+      </div>
+    `;
+  }
+
+  // Function to show error
+  function showError(container, message) {
+    container.innerHTML = `
+      <div style="padding: 30px;">
+        <div style="background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px;">
+          <h2 style="margin: 0 0 10px 0; color: #c33; font-size: 20px;">Error</h2>
+          <p style="margin: 0; color: #666;">${message}</p>
         </div>
-      </body>
-      </html>
-    `);
-    
-    return popup;
+        <button onclick="document.getElementById('event-scraper-modal').remove()" style="
+          margin-top: 20px;
+          width: 100%;
+          padding: 12px;
+          background: #4285f4;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 16px;
+          cursor: pointer;
+        ">Close</button>
+      </div>
+    `;
   }
   
   // Main execution
   async function main() {
     // Extract content
     let content = extractStructuredData();
-    
+
     // Fallback to plain text if no structured data found
     if (!content || content.trim().length === 0) {
       content = extractPlainText();
     }
-    
+
     if (!content || content.trim().length === 0) {
       alert('No content found on this page.');
       return;
     }
-    
-    // Show loading popup
-    const popup = showLoadingPopup();
-    if (!popup) return;
-    
+
+    // Create modal and show loading
+    const modalContent = createModal();
+    showLoading(modalContent);
+
     try {
       // Call API with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
+
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
@@ -143,45 +186,32 @@
         body: JSON.stringify({ text: content }),
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         throw new Error(`API request failed: ${response.status}`);
       }
-      
+
       const html = await response.text();
-      
-      // Display result in popup
-      popup.document.open();
-      popup.document.write(html);
-      popup.document.close();
-      
+
+      // Display result in modal
+      modalContent.innerHTML = html;
+
+      // Add close button functionality to any existing close buttons in the response
+      const closeButtons = modalContent.querySelectorAll('[data-close-modal]');
+      closeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById('event-scraper-modal').remove();
+        });
+      });
+
     } catch (error) {
       console.error('Error:', error);
-      popup.document.open();
-      popup.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; padding: 20px; }
-            .error { background: #fee; border: 1px solid #fcc; padding: 15px; border-radius: 8px; color: #c33; }
-          </style>
-        </head>
-        <body>
-          <div class="error">
-            <h2>Error</h2>
-            <p>${error.message}</p>
-          </div>
-        </body>
-        </html>
-      `);
-      popup.document.close();
+      showError(modalContent, error.message);
     }
   }
-  
+
   main();
 })();
 
