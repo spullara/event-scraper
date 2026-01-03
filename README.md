@@ -10,9 +10,10 @@ A bookmarklet and API service that extracts event information from web pages and
 - 🤖 **AI-Powered Fallback**: Uses Gemini 2.5 Flash Lite to extract events from plain text when structured data isn't available
 - 🌍 **Timezone Aware**: Preserves event timezones from the page or uses browser timezone
 - 📱 **Multiple Calendar Formats**: Generates both Google Calendar URLs and ICS files
-- 🎯 **Multiple Events Support**: Handles pages with multiple events (up to 5)
+- 🎯 **Multiple Events Support**: Handles pages with multiple events
 - ⚡ **Fast & Simple**: One-click extraction with clean, in-page modal UI
 - 🔄 **Smart Retry**: Tries structured data first, falls back to plain text if no events found
+- 🛡️ **CSP Bypass**: Automatically falls back to popup window on sites with strict Content Security Policy
 
 ## How It Works
 
@@ -32,6 +33,7 @@ A bookmarklet and API service that extracts event information from web pages and
    - Provides Google Calendar and ICS download links
    - Handles multiple events with selection UI
    - Includes debugging console logs
+   - Falls back to popup window on sites with strict CSP (uses form submission to bypass restrictions)
 
 ## Setup
 
