@@ -7,7 +7,7 @@ A bookmarklet and API service that extracts event information from web pages and
 ## Features
 
 - 📅 **Smart Event Detection**: Automatically detects structured event data (Schema.org, Open Graph, hCalendar)
-- 🤖 **AI-Powered Fallback**: Uses Gemini 2.0 Flash to extract events from plain text when structured data isn't available
+- 🤖 **AI-Powered Fallback**: Uses Gemini 2.5 Flash Lite to extract events from plain text when structured data isn't available
 - 🌍 **Timezone Aware**: Preserves event timezones from the page or uses browser timezone
 - 📱 **Multiple Calendar Formats**: Generates both Google Calendar URLs and ICS files
 - 🎯 **Multiple Events Support**: Handles pages with multiple events (up to 5)
@@ -22,7 +22,7 @@ A bookmarklet and API service that extracts event information from web pages and
    - Sends browser timezone for accurate time handling
 
 2. **API** processes the content:
-   - Uses Gemini 2.0 Flash Experimental with structured outputs
+   - Uses Gemini 2.5 Flash Lite with structured outputs
    - Extracts event details (title, date, location, description, timezone)
    - Preserves timezone information instead of converting to UTC
    - Returns HTML with calendar links
@@ -171,7 +171,7 @@ HTML content to display in modal (includes event details and calendar links with
 
 - **Frontend**: Vanilla JavaScript bookmarklet
 - **Backend**: Vercel Serverless Functions
-- **AI**: Vercel AI SDK + Google Gemini 2.0 Flash Experimental
+- **AI**: Vercel AI SDK + Google Gemini 2.5 Flash Lite
 - **Deployment**: Vercel + AWS Route 53
 - **Domain**: grabcal.com
 

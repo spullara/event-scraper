@@ -16,7 +16,7 @@ A bookmarklet and API service that extracts event information from web pages and
 - Displays results in an in-page modal overlay
 
 ### 2. Vercel API
-- Uses Vercel AI SDK with Google Gemini 2.0 Flash Experimental
+- Uses Vercel AI SDK with Google Gemini 2.5 Flash Lite
 - Structured outputs using Zod schemas
 - Extracts timezone information from event text
 - Falls back to browser timezone if not specified
@@ -81,7 +81,7 @@ A bookmarklet and API service that extracts event information from web pages and
 
 #### Processing
 - Uses Vercel AI SDK with structured outputs
-- Model: Google Gemini 2.0 Flash Experimental
+- Model: Google Gemini 2.5 Flash Lite
 - Zod schema for type-safe event extraction
 - Extracts timezone from event text (e.g., "PST", "EST", "America/Los_Angeles")
 - Falls back to browser timezone if not specified
@@ -103,7 +103,7 @@ A bookmarklet and API service that extracts event information from web pages and
 ### Technical Stack
 - **Frontend**: Vanilla JavaScript bookmarklet (IIFE pattern)
 - **Backend**: Vercel serverless function (Node.js 18+)
-- **AI**: Vercel AI SDK + Google Gemini 2.0 Flash Experimental
+- **AI**: Vercel AI SDK + Google Gemini 2.5 Flash Lite
 - **Deployment**: Vercel + AWS Route 53
 - **Domain**: grabcal.com
 - **Environment**: Gemini API key in Vercel env vars
@@ -132,7 +132,7 @@ A bookmarklet and API service that extracts event information from web pages and
 
 ### ✅ Completed
 - Vercel project structure
-- `/api/extract-event` endpoint with Gemini 2.0 Flash Experimental
+- `/api/extract-event` endpoint with Gemini 2.5 Flash Lite
 - Event extraction with Zod schemas and structured outputs
 - Timezone extraction and preservation
 - Google Calendar URL generation with timezone
