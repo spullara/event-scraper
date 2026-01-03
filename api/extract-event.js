@@ -50,7 +50,7 @@ export default async function handler(req, res) {
       prompt: `Extract event information from the following text.
 
 If you find exactly one event, return status "success" with the event details.
-If you find multiple events (up to 5), return status "multiple" with an array of events.
+If you find multiple events, return status "multiple" with an array of all events found.
 If no event is found, return status "error" with an appropriate message.
 
 For dates:
@@ -77,7 +77,7 @@ ${text}`,
     }
 
     if (data.status === 'multiple' && data.events && data.events.length > 0) {
-      return res.status(200).send(generateMultipleHTML(data.events.slice(0, 5)));
+      return res.status(200).send(generateMultipleHTML(data.events));
     }
 
     return res.status(200).send(generateErrorHTML('Unable to process events'));
