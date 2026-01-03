@@ -49,7 +49,7 @@ npm install
 
 3. Create `.env` file with your Gemini API key:
 ```
-GEMINI_API_KEY=your_api_key_here
+GOOGLE_GENERATIVE_AI_API_KEY=your_api_key_here
 ```
 
 4. Start the development server:
@@ -80,7 +80,7 @@ vercel
 ```
 
 3. Set environment variable in Vercel dashboard:
-   - `GEMINI_API_KEY`: Your Google Gemini API key
+   - `GOOGLE_GENERATIVE_AI_API_KEY`: Your Google Gemini API key
 
 4. Update the bookmarklet URL in `public/index.html` to use your production URL
 

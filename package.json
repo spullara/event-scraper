@@ -4,8 +4,7 @@
   "description": "Extract events from web pages and add to calendar",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "vercel build",
+    "start": "vercel dev",
     "deploy": "vercel"
   },
   "dependencies": {

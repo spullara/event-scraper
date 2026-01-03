@@ -2,9 +2,6 @@ import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
-// Load environment variable
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
 // Schema for event data
 const eventSchema = z.object({
   title: z.string(),
