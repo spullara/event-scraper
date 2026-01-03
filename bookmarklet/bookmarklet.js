@@ -159,14 +159,26 @@
   
   // Main execution
   async function main() {
-    // Extract content
-    let content = extractStructuredData();
-    let extractionMethod = 'structured data';
+    // Extract content - try structured data first
+    let structuredData = extractStructuredData();
+    let plainText = extractPlainText();
 
-    // Fallback to plain text if no structured data found
-    if (!content || content.trim().length === 0) {
-      content = extractPlainText();
-      extractionMethod = 'plain text';
+    let content = '';
+    let extractionMethod = '';
+
+    // Always include plain text as fallback, even if we have structured data
+    if (structuredData && structuredData.trim().length > 0) {
+      content = structuredData;
+      extractionMethod = 'structured data';
+
+      // Also append plain text to give the AI more context
+      if (plainText && plainText.trim().length > 0) {
+        content += '\n\n--- Plain Text Fallback ---\n\n' + plainText;
+        extractionMethod = 'structured data + plain text';
+      }
+    } else if (plainText && plainText.trim().length > 0) {
+      content = plainText;
+      extractionMethod = 'plain text only';
     }
 
     if (!content || content.trim().length === 0) {
