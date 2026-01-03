@@ -1,7 +1,7 @@
 (function() {
   'use strict';
   
-  const API_URL = 'https://event-scraper-eight.vercel.app/api/extract-event'; // Will be updated for production
+  const API_URL = 'https://grabcal.com/api/extract-event';
   
   // Function to extract structured event data
   function extractStructuredData() {
