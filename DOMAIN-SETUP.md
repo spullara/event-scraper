@@ -31,7 +31,7 @@ Your event scraper is now live at **https://grabcal.com**
 
 ### DNS Records
 ```
-grabcal.com          A      76.76.21.21 (Vercel)
+grabcal.com          A      216.198.79.1 (Vercel - recommended IP)
 www.grabcal.com      CNAME  cname.vercel-dns.com
 ```
 
