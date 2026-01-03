@@ -1,0 +1,270 @@
+import { google } from '@ai-sdk/google';
+import { generateObject } from 'ai';
+import { z } from 'zod';
+
+// Load environment variable
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+// Schema for event data
+const eventSchema = z.object({
+  title: z.string(),
+  startDate: z.string().describe('ISO 8601 date-time string'),
+  endDate: z.string().optional().describe('ISO 8601 date-time string'),
+  location: z.string().optional(),
+  description: z.string().optional(),
+});
+
+const responseSchema = z.object({
+  status: z.enum(['success', 'error', 'multiple']),
+  message: z.string().optional(),
+  events: z.array(eventSchema).optional(),
+});
+
+export default async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { text } = req.body;
+
+    if (!text) {
+      return res.status(400).send(generateErrorHTML('No text provided'));
+    }
+
+    // Use Gemini to extract event information
+    const result = await generateObject({
+      model: google('gemini-2.0-flash-exp', {
+        structuredOutputs: true,
+      }),
+      schema: responseSchema,
+      prompt: `Extract event information from the following text.
+
+If you find exactly one event, return status "success" with the event details.
+If you find multiple events (up to 5), return status "multiple" with an array of events.
+If no event is found, return status "error" with an appropriate message.
+
+For dates, use ISO 8601 format (YYYY-MM-DDTHH:mm:ss). If no time is specified, use 00:00:00.
+If no end date is specified, leave it empty.
+
+Text to analyze:
+${text}`,
+    });
+
+    const data = result.object;
+
+    // Generate HTML response based on status
+    if (data.status === 'error') {
+      return res.status(200).send(generateErrorHTML(data.message || 'No event found'));
+    }
+
+    if (data.status === 'success' && data.events && data.events.length > 0) {
+      return res.status(200).send(generateSuccessHTML(data.events[0]));
+    }
+
+    if (data.status === 'multiple' && data.events && data.events.length > 0) {
+      return res.status(200).send(generateMultipleHTML(data.events.slice(0, 5)));
+    }
+
+    return res.status(200).send(generateErrorHTML('Unable to process events'));
+
+  } catch (error) {
+    console.error('Error processing request:', error);
+    return res.status(200).send(generateErrorHTML(`Error: ${error.message}`));
+  }
+}
+
+function generateGoogleCalendarURL(event) {
+  const baseURL = 'https://calendar.google.com/calendar/render';
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: event.title,
+    dates: formatDateForGoogle(event.startDate, event.endDate),
+  });
+
+  if (event.location) {
+    params.append('location', event.location);
+  }
+
+  if (event.description) {
+    params.append('details', event.description);
+  }
+
+  return `${baseURL}?${params.toString()}`;
+}
+
+function formatDateForGoogle(startDate, endDate) {
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  };
+
+  const start = formatDate(startDate);
+  const end = endDate ? formatDate(endDate) : formatDate(new Date(new Date(startDate).getTime() + 3600000).toISOString());
+
+  return `${start}/${end}`;
+}
+
+function generateICS(event) {
+  const formatICSDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  };
+
+  const start = formatICSDate(event.startDate);
+  const end = event.endDate ? formatICSDate(event.endDate) : formatICSDate(new Date(new Date(event.startDate).getTime() + 3600000).toISOString());
+
+  const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:${start}
+DTEND:${end}
+SUMMARY:${event.title}
+${event.description ? `DESCRIPTION:${event.description.replace(/\n/g, '\\n')}` : ''}
+${event.location ? `LOCATION:${event.location}` : ''}
+END:VEVENT
+END:VCALENDAR`;
+
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+}
+
+function generateSuccessHTML(event) {
+  const googleURL = generateGoogleCalendarURL(event);
+  const icsURL = generateICS(event);
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; padding: 20px; margin: 0; }
+    .container { max-width: 500px; }
+    h2 { margin: 0 0 15px 0; font-size: 18px; color: #333; }
+    .event-details { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    .event-details p { margin: 5px 0; font-size: 14px; color: #666; }
+    .event-details strong { color: #333; }
+    .buttons { display: flex; gap: 10px; flex-direction: column; }
+    .button { display: block; padding: 12px; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px; }
+    .button-primary { background: #4285f4; color: white; }
+    .button-secondary { background: #34a853; color: white; }
+    .button:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Event Found</h2>
+    <div class="event-details">
+      <p><strong>Title:</strong> ${escapeHTML(event.title)}</p>
+      <p><strong>Date:</strong> ${formatDisplayDate(event.startDate)}</p>
+      ${event.endDate ? `<p><strong>End:</strong> ${formatDisplayDate(event.endDate)}</p>` : ''}
+      ${event.location ? `<p><strong>Location:</strong> ${escapeHTML(event.location)}</p>` : ''}
+      ${event.description ? `<p><strong>Description:</strong> ${escapeHTML(event.description)}</p>` : ''}
+    </div>
+    <div class="buttons">
+      <a href="${googleURL}" target="_blank" class="button button-primary">Add to Google Calendar</a>
+      <a href="${icsURL}" download="event.ics" class="button button-secondary">Download ICS File</a>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function generateMultipleHTML(events) {
+  const eventItems = events.map((event, index) => {
+    const googleURL = generateGoogleCalendarURL(event);
+    const icsURL = generateICS(event);
+
+    return `
+      <div class="event-item">
+        <h3>${escapeHTML(event.title)}</h3>
+        <p><strong>Date:</strong> ${formatDisplayDate(event.startDate)}</p>
+        ${event.location ? `<p><strong>Location:</strong> ${escapeHTML(event.location)}</p>` : ''}
+        <div class="event-buttons">
+          <a href="${googleURL}" target="_blank" class="button button-primary">Add to Google Calendar</a>
+          <a href="${icsURL}" download="event-${index}.ics" class="button button-secondary">Download ICS</a>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; padding: 20px; margin: 0; }
+    .container { max-width: 500px; }
+    h2 { margin: 0 0 15px 0; font-size: 18px; color: #333; }
+    .event-item { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    .event-item h3 { margin: 0 0 10px 0; font-size: 16px; color: #333; }
+    .event-item p { margin: 5px 0; font-size: 14px; color: #666; }
+    .event-buttons { display: flex; gap: 10px; margin-top: 10px; }
+    .button { display: block; padding: 10px; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 13px; flex: 1; }
+    .button-primary { background: #4285f4; color: white; }
+    .button-secondary { background: #34a853; color: white; }
+    .button:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Multiple Events Found</h2>
+    ${eventItems}
+  </div>
+</body>
+</html>`;
+}
+
+function generateErrorHTML(message) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; padding: 20px; margin: 0; }
+    .container { max-width: 500px; }
+    .error { background: #fee; border: 1px solid #fcc; padding: 15px; border-radius: 8px; color: #c33; }
+    h2 { margin: 0 0 10px 0; font-size: 18px; }
+    p { margin: 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="error">
+      <h2>No Event Found</h2>
+      <p>${escapeHTML(message)}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function escapeHTML(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatDisplayDate(dateStr) {
+  const date = new Date(dateStr);
+  return date.toLocaleString('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
