@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Test Form Submission - GrabCal</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #357ae8;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Form Submission to API</h1>
+  <p>This tests that the API can receive data via form POST (not JSON).</p>
+  
+  <button onclick="testFormSubmit()">Test Form Submit to Popup</button>
+
+  <script>
+    function testFormSubmit() {
+      const testData = {
+        text: 'Tech Conference on March 15, 2026 at 9:00 AM - 5:00 PM PST at San Francisco Convention Center',
+        browserTimezone: 'America/Los_Angeles'
+      };
+      
+      // Create form
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'https://grabcal.com/api/extract-event';
+      form.target = 'GrabCalTest';
+      form.style.display = 'none';
+      
+      // Add text field
+      const textInput = document.createElement('input');
+      textInput.type = 'hidden';
+      textInput.name = 'text';
+      textInput.value = testData.text;
+      form.appendChild(textInput);
+      
+      // Add timezone field
+      const tzInput = document.createElement('input');
+      tzInput.type = 'hidden';
+      tzInput.name = 'browserTimezone';
+      tzInput.value = testData.browserTimezone;
+      form.appendChild(tzInput);
+      
+      document.body.appendChild(form);
+      
+      // Open popup
+      const popup = window.open('', 'GrabCalTest', 'width=600,height=700,scrollbars=yes,resizable=yes');
+      
+      if (!popup) {
+        alert('Please allow popups');
+        form.remove();
+        return;
+      }
+      
+      // Show loading in popup
+      popup.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>GrabCal - Loading...</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              text-align: center;
+            }
+            .spinner {
+              border: 4px solid #f3f3f3;
+              border-top: 4px solid #4285f4;
+              border-radius: 50%;
+              width: 50px;
+              height: 50px;
+              animation: spin 1s linear infinite;
+              margin: 20px auto;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="spinner"></div>
+          <p>Loading...</p>
+        </body>
+        </html>
+      `);
+      
+      // Submit form
+      form.submit();
+      
+      // Clean up
+      setTimeout(() => form.remove(), 1000);
+    }
+  </script>
+</body>
+</html>
+

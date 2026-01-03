@@ -2,6 +2,13 @@ import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
+// Disable body parsing to handle both JSON and form data
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 // Schema for event data
 const eventSchema = z.object({
   title: z.string(),
@@ -33,7 +40,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { text, browserTimezone } = req.body;
+    // Read raw body since we disabled bodyParser
+    const rawBody = await new Promise((resolve) => {
+      let data = '';
+      req.on('data', chunk => data += chunk);
+      req.on('end', () => resolve(data));
+    });
+
+    // Parse body - handle both JSON and form-encoded data
+    let text, browserTimezone;
+
+    const contentType = req.headers['content-type'] || '';
+
+    if (contentType.includes('application/json')) {
+      // JSON data
+      const parsed = JSON.parse(rawBody);
+      text = parsed.text;
+      browserTimezone = parsed.browserTimezone;
+    } else {
+      // Form-encoded data (default)
+      const params = new URLSearchParams(rawBody);
+      text = params.get('text');
+      browserTimezone = params.get('browserTimezone');
+    }
 
     if (!text) {
       return res.status(400).send(generateErrorHTML('No text provided'));
