@@ -9,18 +9,25 @@ Some websites (like Steam, GitHub, Shopify, etc.) implement strict Content Secur
 
 This prevents the bookmarklet from making API calls to extract event information.
 
-## Solution: Form Submission to Popup Window
+## Solution: Hybrid Approach with Automatic Fallback
 
-**Strategy:** Use HTML form submission instead of fetch/XHR
+### Primary Method: Fetch with In-Page Modal (Preferred)
+**On most sites:**
+- Use standard `fetch()` API to call the event extraction endpoint
+- Display results in a clean in-page modal overlay
+- Best user experience - no popup needed
+
+### Fallback Method: Form Submission to Popup Window
+**When fetch fails (CSP-restricted sites):**
+- Automatically detect fetch failure
 - Create a hidden HTML form with POST method
 - Set form target to a popup window
 - Submit form data (not JSON) to the API
-- Form submissions bypass CSP `connect-src` and `frame-src` restrictions
+- Form submissions bypass CSP `connect-src` restrictions
 
-**Why it works:**
+**Why the fallback works:**
 - Form submissions are considered navigation, not fetch/XHR
 - CSP `connect-src` doesn't apply to form submissions
-- CSP `frame-src` doesn't apply to popup windows
 - The popup window receives the API response as HTML
 - Works on **all** websites, regardless of CSP policy
 
@@ -29,45 +36,69 @@ This prevents the bookmarklet from making API calls to extract event information
 ### Bookmarklet Code
 
 ```javascript
-// Create form
-const form = document.createElement('form');
-form.method = 'POST';
-form.action = 'https://grabcal.com/api/extract-event';
-form.target = 'GrabCal';
-form.style.display = 'none';
+try {
+  // Try fetch first (works on most sites)
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: content,
+      browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    }),
+  });
 
-// Add hidden inputs
-const textInput = document.createElement('input');
-textInput.type = 'hidden';
-textInput.name = 'text';
-textInput.value = content;
-form.appendChild(textInput);
+  const html = await response.text();
 
-const tzInput = document.createElement('input');
-tzInput.type = 'hidden';
-tzInput.name = 'browserTimezone';
-tzInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
-form.appendChild(tzInput);
+  // Display in modal
+  modalContent.innerHTML = html;
 
-document.body.appendChild(form);
+} catch (error) {
+  // Fetch failed - fall back to form submission
+  console.log('Falling back to form submission (CSP bypass)');
 
-// Open popup window
-const popup = window.open('', 'GrabCal', 'width=600,height=700,scrollbars=yes,resizable=yes');
+  // Remove modal
+  document.getElementById('grabcal-modal').remove();
 
-if (!popup) {
-  alert('Please allow popups for this site to use GrabCal.');
-  form.remove();
-  return;
+  // Create form
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = API_URL;
+  form.target = 'GrabCal';
+  form.style.display = 'none';
+
+  // Add hidden inputs
+  const textInput = document.createElement('input');
+  textInput.type = 'hidden';
+  textInput.name = 'text';
+  textInput.value = content;
+  form.appendChild(textInput);
+
+  const tzInput = document.createElement('input');
+  tzInput.type = 'hidden';
+  tzInput.name = 'browserTimezone';
+  tzInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  form.appendChild(tzInput);
+
+  document.body.appendChild(form);
+
+  // Open popup window
+  const popup = window.open('', 'GrabCal', 'width=600,height=700');
+
+  if (!popup) {
+    alert('Please allow popups for this site.');
+    form.remove();
+    return;
+  }
+
+  // Show loading state in popup
+  popup.document.write('...loading HTML...');
+
+  // Submit form to popup
+  form.submit();
+
+  // Clean up
+  setTimeout(() => form.remove(), 1000);
 }
-
-// Show loading state in popup
-popup.document.write('...loading HTML...');
-
-// Submit form to popup
-form.submit();
-
-// Clean up
-setTimeout(() => form.remove(), 1000);
 ```
 
 ### API Changes
@@ -98,12 +129,18 @@ if (contentType.includes('application/json')) {
 
 ## User Experience
 
-### On All Sites
-- ✅ Popup window opens with event information
+### On Normal Sites (90%+ of websites)
+- ✅ Clean in-page modal overlay appears
+- ✅ No popup blockers triggered
+- ✅ Best UX - no separate window needed
+- ✅ Click outside modal to close
+
+### On CSP-Restricted Sites (Steam, Shopify, etc.)
+- ✅ Automatically falls back to popup window
 - ⚠️ User may need to allow popups once (browser will remember)
 - ✅ Works on **all** websites, regardless of CSP
 - ✅ Clear error message if popups blocked
-- ✅ Same functionality as a modal, just in a separate window
+- ✅ Same functionality, just in a separate window
 
 ## Testing
 
@@ -161,13 +198,9 @@ Tested successfully on real sites with strict CSP:
 - **Pro**: Could work on some sites
 - **Con**: Blocked by `frame-src` CSP directive on many sites (Steam, Shopify, etc.)
 
-### ❌ In-page Modal with fetch()
-- **Pro**: Best UX, no popup needed
-- **Con**: Blocked by `connect-src` CSP directive on many sites
-
-### ✅ Form Submission to Popup (Chosen)
-- **Pro**: Works on **all** sites, no installation, respects security, bypasses both `connect-src` and `frame-src`
-- **Con**: Requires popup window (but browsers remember popup permission)
+### ✅ Hybrid: Fetch with Form Submission Fallback (Chosen)
+- **Pro**: Best UX on normal sites (in-page modal), works on **all** sites (popup fallback), no installation, respects security
+- **Con**: Requires popup window on CSP-restricted sites (but browsers remember popup permission)
 
 ## Future Improvements
 
